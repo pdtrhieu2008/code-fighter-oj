@@ -17,7 +17,7 @@ export default async function ContestDetailPage({ params }: Props) {
   const contest = await prisma.contest.findUnique({
     where: { slug },
     include: {
-      contestProblems: {
+      problems: {
         orderBy: { orderIndex: "asc" },
         include: {
           problem: {
@@ -34,10 +34,10 @@ export default async function ContestDetailPage({ params }: Props) {
       },
       _count: {
         select: {
-          contestParticipants: true,
+          participants: true,
         },
       },
-      contestParticipants: session?.user?.id
+      participants: session?.user?.id
         ? {
             where: { userId: session.user.id },
           }
@@ -50,7 +50,7 @@ export default async function ContestDetailPage({ params }: Props) {
   }
 
   const isRegistered =
-    Array.isArray(contest.contestParticipants) && contest.contestParticipants.length > 0;
+    Array.isArray(contest.participants) && contest.participants.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-[#101114]">

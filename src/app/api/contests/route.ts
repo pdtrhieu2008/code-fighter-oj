@@ -19,8 +19,8 @@ export async function GET(req: Request) {
       include: {
         _count: {
           select: {
-            contestProblems: true,
-            contestParticipants: true,
+            problems: true,
+            participants: true,
           },
         },
       },

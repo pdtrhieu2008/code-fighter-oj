@@ -112,7 +112,7 @@ export function ContestDetailView({ contest, isRegistered, isLoggedIn }: Props) 
           </div>
           <div>
             <span className="text-neutral-500">Số lượng đấu thủ: </span>
-            <strong className="text-white">{contest._count.contestParticipants}</strong>
+            <strong className="text-white">{contest._count.participants}</strong>
           </div>
         </div>
       </div>
@@ -121,7 +121,7 @@ export function ContestDetailView({ contest, isRegistered, isLoggedIn }: Props) 
       <div className="rounded-xl border border-neutral-800 bg-[#16181D] p-6 space-y-4">
         <h2 className="text-sm font-semibold text-white uppercase tracking-wider font-mono flex items-center gap-2">
           <Swords className="h-4 w-4 text-[#E63946]" />
-          Bộ Đề Thi Đấu ({contest.contestProblems.length} bài)
+          Bộ Đề Thi Đấu ({contest.problems.length} bài)
         </h2>
 
         {!hasStarted ? (
@@ -134,7 +134,7 @@ export function ContestDetailView({ contest, isRegistered, isLoggedIn }: Props) 
           </div>
         ) : (
           <div className="divide-y divide-neutral-800">
-            {contest.contestProblems.map((cp: any) => (
+            {contest.problems.map((cp: any) => (
               <div
                 key={cp.id}
                 className="py-4 flex items-center justify-between hover:bg-neutral-800/30 px-3 rounded-lg transition-colors"

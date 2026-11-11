@@ -12,13 +12,13 @@ export async function GET(
     const contest = await prisma.contest.findUnique({
       where: { slug },
       include: {
-        contestProblems: {
+        problems: {
           orderBy: { orderIndex: "asc" },
           include: {
             problem: { select: { id: true, title: true, slug: true } },
           },
         },
-        contestParticipants: {
+        participants: {
           include: {
             user: {
               select: {
@@ -38,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: "Giải đấu không tồn tại." }, { status: 404 });
     }
 
-    const problemIds = contest.contestProblems.map((cp) => cp.problemId);
+    const problemIds = contest.problems.map((cp) => cp.problemId);
 
     // Fetch all submissions for this contest's problems within the contest window
     const submissions = await prisma.submission.findMany({
@@ -57,14 +57,14 @@ export async function GET(
       },
     });
 
-    const problems = contest.contestProblems.map((cp) => ({
+    const problems = contest.problems.map((cp) => ({
       id: cp.problemId,
       problemLabel: cp.problemLabel,
       title: cp.problem.title,
       slug: cp.problem.slug,
     }));
 
-    const participants = contest.contestParticipants.map((cp) => ({
+    const participants = contest.participants.map((cp) => ({
       userId: cp.userId,
       username: cp.user.fighterProfile?.username || cp.user.email.split("@")[0],
       fighterId: cp.user.fighterProfile?.fighterId || "CF-000000",

@@ -28,11 +28,11 @@ export default async function ContestsPage() {
     include: {
       _count: {
         select: {
-          contestProblems: true,
-          contestParticipants: true,
+          problems: true,
+          participants: true,
         },
       },
-      contestParticipants: session?.user?.id
+      participants: session?.user?.id
         ? {
             where: { userId: session.user.id },
           }
@@ -92,7 +92,7 @@ export default async function ContestsPage() {
                 const isUpcoming = now < c.startTime;
                 const isPast = now > c.endTime;
                 const isRegistered =
-                  c.contestParticipants && (c.contestParticipants as any).length > 0;
+                  c.participants && (c.participants as any).length > 0;
 
                 return (
                   <div
@@ -141,11 +141,11 @@ export default async function ContestsPage() {
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5 text-neutral-500" />
-                          {c._count.contestParticipants} đấu thủ
+                          {c._count.participants} đấu thủ
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Swords className="h-3.5 w-3.5 text-neutral-500" />
-                          {c._count.contestProblems} bài tập
+                          {c._count.problems} bài tập
                         </span>
                       </div>
                     </div>

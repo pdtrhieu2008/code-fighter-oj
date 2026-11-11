@@ -1,7 +1,38 @@
 # CODE FIGHTER OJ — TIẾN ĐỘ TRIỂN KHAI 2026-11-11
 
-**Cập nhật:** 2026-11-11 10:50  
-**Giai đoạn hiện tại:** Phase 2 (Online Judge) hoàn thiện 70% + Database Production-ready
+**Cập nhật:** 2026-11-11 12:10 (session ZCode)  
+**Giai đoạn hiện tại:** Phase 2 (Online Judge) ~80% + Phase 6 (Contests) đã sửa lỗi + Seed data hoàn chỉnh
+
+---
+
+## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-11 11:30–12:10, ZCode)
+
+### ✅ Sửa lỗi TypeScript toàn bộ codebase Contests (6 files)
+- **Vấn đề:** Code contests dùng sai tên relations Prisma (`contestProblems`, `contestParticipants`) trong khi schema định nghĩa `problems`, `participants` → `tsc --noEmit` fail với 25 lỗi.
+- **Files đã sửa:**
+  - `src/app/api/contests/route.ts` — `_count.select`
+  - `src/app/api/contests/[slug]/scoreboard/route.ts` — include + map standings
+  - `src/app/contests/page.tsx` — include, isRegistered, count hiển thị
+  - `src/app/contests/[slug]/page.tsx` — include + isRegistered
+  - `src/app/contests/[slug]/scoreboard/page.tsx` — include + tính standings
+  - `src/app/contests/[slug]/ContestDetailView.tsx` — count + render problem set
+- **Kết quả:** `pnpm exec tsc --noEmit` → **PASS (0 lỗi)**
+
+### ✅ Sửa seed script + Seed dữ liệu thành công
+- **Vấn đề:** Seed từng fail `P2002 Unique constraint fighterId` do tài khoản thật của Hieu (`rollerphan`, `CF-000001`) đã chiếm dải fighterId tuần tự.
+- **Fix:** Chuyển 3 tài khoản hệ thống sang dải riêng `CF-900001+` (admin_spartan, sensei_leet, fighter_kid) — không đụng dải `CF-0000xx` cấp tự động khi đăng ký.
+- **Đã seed thành công:** 27 Belt Requirements, 11 Tags, 3 system accounts, 4 bài toán kèm test cases (Hello Fighter, Tổng Hai Số, Binary Search, LIS), 4 Achievements, 5 System Settings.
+- **KHÔNG đụng tới** tài khoản cá nhân của Hieu trong DB.
+
+### ✅ Dev server & pages
+- Dev server chạy `http://localhost:3000` — `/`, `/problems`, `/contests`, `/login`, `/api/problems` đều **HTTP 200**.
+- Unit tests: **20/20 pass** (vitest).
+
+### 🔄 Judge0 — đang triển khai qua Docker trong WSL2
+- Phát hiện **Docker 29.8.0** có sẵn trong WSL Ubuntu 26.04 (daemon chạy, cần root).
+- Đã tải `docker-compose.yml` + `judge0.conf` chính thức của Judge0 vào `~/judge0` trong WSL.
+- `docker compose up -d` đang chạy nền (pull image judge0/judge0, postgres:16.2, redis:7.2.4 — khoảng 1.5GB).
+- Khi xong: Judge0 API sẽ nghe ở `localhost:2358` (đã map port) → khớp `JUDGE0_API_URL` trong `.env.local`, **không cần sửa config**.
 
 ---
 
@@ -256,12 +287,13 @@ pnpm exec prisma validate         # pass
 - [x] Prisma validate pass
 - [x] Targeted ESLint pass
 - [x] `.env*` in .gitignore
-- [ ] Git repo initialized
-- [ ] First commit created
-- [ ] GitHub remote added
-- [ ] Pushed to GitHub
-- [ ] End-to-end signup+login test
-- [ ] Judge0 configured
+- [x] Git repo initialized (commit `13c448d`, 2026-11-11)
+- [x] GitHub remote added (`pdtrhieu2008/code-fighter-oj`)
+- [x] Pushed to GitHub (master)
+- [x] TypeScript `tsc --noEmit` pass (sau khi fix 6 file contests)
+- [x] Seed data hoàn chỉnh (4 bài toán + test cases + 27 belts + 3 system accounts)
+- [ ] End-to-end signup+login+submit test
+- [ ] Judge0 configured (đang pull image qua Docker/WSL2)
 
 ---
 

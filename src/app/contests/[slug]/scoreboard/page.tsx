@@ -28,14 +28,14 @@ export default async function ContestScoreboardPage({ params }: Props) {
 
   const contest = await prisma.contest.findUnique({
     where: { slug },
-    include: {
-      contestProblems: {
-        orderBy: { orderIndex: "asc" },
-        include: {
-          problem: { select: { id: true, title: true, slug: true } },
+      include: {
+        problems: {
+          orderBy: { orderIndex: "asc" },
+          include: {
+            problem: { select: { id: true, title: true, slug: true } },
+          },
         },
-      },
-      contestParticipants: {
+        participants: {
         include: {
           user: {
             select: {
@@ -55,7 +55,7 @@ export default async function ContestScoreboardPage({ params }: Props) {
     notFound();
   }
 
-  const problemIds = contest.contestProblems.map((cp) => cp.problemId);
+  const problemIds = contest.problems.map((cp) => cp.problemId);
 
   const submissions = await prisma.submission.findMany({
     where: {
@@ -73,14 +73,14 @@ export default async function ContestScoreboardPage({ params }: Props) {
     },
   });
 
-  const problems = contest.contestProblems.map((cp) => ({
+  const problems = contest.problems.map((cp) => ({
     id: cp.problemId,
     problemLabel: cp.problemLabel,
     title: cp.problem.title,
     slug: cp.problem.slug,
   }));
 
-  const participants = contest.contestParticipants.map((cp) => ({
+  const participants = contest.participants.map((cp) => ({
     userId: cp.userId,
     username: cp.user.fighterProfile?.username || cp.user.email.split("@")[0],
     fighterId: cp.user.fighterProfile?.fighterId || "CF-000000",

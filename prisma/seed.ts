@@ -109,7 +109,7 @@ async function main() {
       },
       fighterProfile: {
         create: {
-          fighterId: "CF-000001",
+          fighterId: "CF-900001",
           username: "admin_spartan",
           totalExp: 99999,
           rating: 2800,
@@ -147,7 +147,7 @@ async function main() {
       },
       fighterProfile: {
         create: {
-          fighterId: "CF-000002",
+          fighterId: "CF-900002",
           username: "sensei_leet",
           totalExp: 25000,
           rating: 2150,
@@ -185,7 +185,7 @@ async function main() {
       },
       fighterProfile: {
         create: {
-          fighterId: "CF-000003",
+          fighterId: "CF-900003",
           username: "fighter_kid",
           totalExp: 450,
           rating: 1350,
