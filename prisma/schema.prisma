@@ -1,0 +1,1109 @@
+// CODE FIGHTER OJ — Prisma Schema
+// Provider: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  GUEST
+  REGISTERED_USER
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum BeltColor {
+  WHITE
+  YELLOW
+  ORANGE
+  GREEN
+  BLUE
+  PURPLE
+  BROWN
+  RED
+  BLACK
+}
+
+enum BeltLevel {
+  LEVEL_I
+  LEVEL_II
+  LEVEL_III
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PromotionType {
+  AUTOMATIC
+  MANUAL
+  EXAMINATION
+}
+
+enum Difficulty {
+  BEGINNER
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+enum Language {
+  CPP17
+  CPP20
+  PYTHON3
+  JAVA
+  JAVASCRIPT
+}
+
+enum Verdict {
+  PENDING
+  QUEUED
+  JUDGING
+  ACCEPTED
+  WRONG_ANSWER
+  TIME_LIMIT_EXCEEDED
+  MEMORY_LIMIT_EXCEEDED
+  RUNTIME_ERROR
+  COMPILATION_ERROR
+  PARTIAL_SCORE
+  SYSTEM_ERROR
+}
+
+enum ContestType {
+  PUBLIC
+  PRIVATE
+  GROUP
+  CLASS
+  BELT_SPECIFIC
+  VIRTUAL
+}
+
+enum ContestStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION
+  ACTIVE
+  ENDED
+  ARCHIVED
+}
+
+enum ScoringType {
+  ICPC
+  IOI
+  CUSTOM
+}
+
+enum GroupStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum GroupRole {
+  OWNER
+  INSTRUCTOR
+  MEMBER
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+  EXERCISE
+  QUIZ
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+enum FeedbackType {
+  GENERAL
+  PROBLEM
+  ASSIGNMENT
+  EXAMINATION
+}
+
+enum EXPSource {
+  PROBLEM_SOLVED
+  DAILY_STREAK
+  CONTEST_PARTICIPATION
+  CONTEST_ACHIEVEMENT
+  ACHIEVEMENT_UNLOCKED
+  ASSIGNMENT_COMPLETED
+  ADMIN_ADJUSTMENT
+  MISSION_COMPLETED
+}
+
+enum MissionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+enum NotificationType {
+  SUBMISSION_JUDGED
+  CONTEST_STARTING
+  CONTEST_ENDED
+  NEW_ASSIGNMENT
+  ASSIGNMENT_DEADLINE
+  EXAM_AVAILABLE
+  BELT_PROMOTED
+  ACHIEVEMENT_UNLOCKED
+  INSTRUCTOR_FEEDBACK
+  GROUP_INVITATION
+  SYSTEM_ANNOUNCEMENT
+}
+
+// ─────────────────────────────────────────────
+// AUTH & USER
+// ─────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  hashedPassword String?
+  role           Role      @default(REGISTERED_USER)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  accounts              Account[]
+  sessions              Session[]
+  userProfile           UserProfile?
+  fighterProfile        FighterProfile?
+  userPermissions       UserPermission[]
+  userBelts             UserBelt[]
+  examinationAttempts   ExaminationAttempt[]
+  promotionsReceived    PromotionHistory[]    @relation("PromotionReceiver")
+  promotionsGiven       PromotionHistory[]    @relation("PromotionGiver")
+  authoredProblems      Problem[]             @relation("ProblemAuthor")
+  authoredEditorials    ProblemEditorial[]    @relation("EditorialAuthor")
+  problemVersions       ProblemVersion[]
+  submissions           Submission[]
+  contestsCreated       Contest[]
+  contestParticipations ContestParticipant[]
+  contestStandings      ContestStanding[]
+  groupsCreated         Group[]               @relation("GroupCreator")
+  instructedGroups      Group[]               @relation("GroupInstructor")
+  groupMemberships      GroupMember[]
+  groupInvitationsCreated GroupInvitation[]
+  assignmentsCreated    GroupAssignment[]
+  instructedCourses     Course[]
+  instructedClasses     Class[]
+  enrollments           Enrollment[]
+  classAssignmentsCreated Assignment[]
+  assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmitter")
+  gradedSubmissions     AssignmentSubmission[] @relation("AssignmentGrader")
+  feedbackReceived      InstructorFeedback[]  @relation("FeedbackReceiver")
+  feedbackGiven         InstructorFeedback[]  @relation("FeedbackGiver")
+  expTransactions       EXPTransaction[]
+  userAchievements      UserAchievement[]
+  dailyActivities       DailyActivity[]
+  userStreak            UserStreak?
+  userMissions          UserMission[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  systemSettingsUpdated SystemSetting[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  type              String
+  refreshToken      String? @db.Text
+  accessToken       String? @db.Text
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String? @db.Text
+  sessionState      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────
+
+model UserProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  fullName      String?
+  avatarUrl     String?
+  bio           String?  @db.Text
+  location      String?
+  website       String?
+  twitterHandle String?
+  githubHandle  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model FighterProfile {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  fighterId            String    @unique // e.g. "CF-000001"
+  username             String    @unique
+  totalExp             Int       @default(0)
+  rating               Int       @default(1200)
+  totalSolved          Int       @default(0)
+  totalSubmissions     Int       @default(0)
+  acceptedSubmissions  Int       @default(0)
+  currentStreak        Int       @default(0)
+  longestStreak        Int       @default(0)
+  lastActiveDate       DateTime?
+  profileVisibility    Visibility @default(PUBLIC)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("fighter_profiles")
+}
+
+// ─────────────────────────────────────────────
+// ROLES & PERMISSIONS
+// ─────────────────────────────────────────────
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model UserPermission {
+  userId       String
+  permissionId String
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+// ─────────────────────────────────────────────
+// BELT SYSTEM
+// ─────────────────────────────────────────────
+
+model UserBelt {
+  id         String    @id @default(cuid())
+  userId     String
+  beltColor  BeltColor
+  beltLevel  BeltLevel
+  awardedAt  DateTime  @default(now())
+  awardedBy  String?
+  notes      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_belts")
+}
+
+model BeltRequirement {
+  id                       String    @id @default(cuid())
+  beltColor                BeltColor
+  beltLevel                BeltLevel
+  minExp                   Int       @default(0)
+  minSolvedProblems        Int       @default(0)
+  minEasyProblems          Int       @default(0)
+  minMediumProblems        Int       @default(0)
+  minHardProblems          Int       @default(0)
+  requiresExamination      Boolean   @default(false)
+  minContestParticipation  Int       @default(0)
+  requiredTags             Json      @default("[]")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@unique([beltColor, beltLevel])
+  @@map("belt_requirements")
+}
+
+model BeltExamination {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?    @db.Text
+  beltColor    BeltColor
+  beltLevel    BeltLevel
+  startTime    DateTime
+  endTime      DateTime
+  duration     Int        // in minutes
+  maxAttempts  Int        @default(1)
+  passingScore Int        @default(70)
+  status       ExamStatus @default(DRAFT)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  attempts ExaminationAttempt[]
+
+  @@map("belt_examinations")
+}
+
+model ExaminationAttempt {
+  id            String    @id @default(cuid())
+  examinationId String
+  userId        String
+  startedAt     DateTime  @default(now())
+  submittedAt   DateTime?
+  score         Int?
+  verdict       Verdict?
+  passed        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  examination BeltExamination @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("examination_attempts")
+}
+
+model PromotionHistory {
+  id            String        @id @default(cuid())
+  userId        String
+  fromBeltColor BeltColor?
+  fromBeltLevel BeltLevel?
+  toBeltColor   BeltColor
+  toBeltLevel   BeltLevel
+  promotedAt    DateTime      @default(now())
+  promotedBy    String?
+  reason        String?
+  type          PromotionType @default(AUTOMATIC)
+
+  user     User  @relation("PromotionReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  promoter User? @relation("PromotionGiver", fields: [promotedBy], references: [id], onDelete: SetNull)
+
+  @@map("promotion_history")
+}
+
+// ─────────────────────────────────────────────
+// PROBLEM
+// ─────────────────────────────────────────────
+
+model Problem {
+  id                  String     @id @default(cuid())
+  slug                String     @unique
+  title               String
+  statement           String     @db.Text
+  inputFormat         String?    @db.Text
+  outputFormat        String?    @db.Text
+  constraints         String?    @db.Text
+  examples            Json       @default("[]")
+  difficulty          Difficulty
+  visibility          Visibility @default(PRIVATE)
+  timeLimit           Int        @default(2000) // milliseconds
+  memoryLimit         Int        @default(262144) // KB (256 MB)
+  supportedLanguages  String[]   @default([])
+  requiredBelt        BeltColor?
+  authorId            String
+  version             Int        @default(1)
+  totalSubmissions    Int        @default(0)
+  acceptedSubmissions Int        @default(0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deletedAt           DateTime?
+
+  author       User              @relation("ProblemAuthor", fields: [authorId], references: [id])
+  tags         ProblemTag[]
+  testCases    ProblemTestCase[]
+  editorial    ProblemEditorial?
+  versions     ProblemVersion[]
+  submissions  Submission[]
+  contestProblems ContestProblem[]
+  groupAssignments GroupAssignment[]
+  assignmentProblems AssignmentProblem[]
+
+  @@index([slug])
+  @@index([difficulty])
+  @@index([visibility])
+  @@index([deletedAt])
+  @@map("problems")
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+
+  problems ProblemTag[]
+
+  @@map("tags")
+}
+
+model ProblemTag {
+  problemId String
+  tagId     String
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, tagId])
+  @@map("problem_tags")
+}
+
+model ProblemTestCase {
+  id           String   @id @default(cuid())
+  problemId    String
+  inputData    String   @db.Text
+  outputData   String   @db.Text
+  isSample     Boolean  @default(false)
+  isHidden     Boolean  @default(false)
+  points       Int      @default(0)
+  timeLimit    Int?     // override in ms
+  memoryLimit  Int?     // override in KB
+  orderIndex   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  problem     Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  judgeResults JudgeResult[]
+
+  @@index([problemId, orderIndex])
+  @@map("problem_test_cases")
+}
+
+model ProblemEditorial {
+  id          String    @id @default(cuid())
+  problemId   String    @unique
+  content     String    @db.Text
+  authorId    String
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author  User    @relation("EditorialAuthor", fields: [authorId], references: [id])
+
+  @@map("problem_editorials")
+}
+
+model ProblemVersion {
+  id           String   @id @default(cuid())
+  problemId    String
+  version      Int
+  title        String
+  statement    String   @db.Text
+  inputFormat  String?  @db.Text
+  outputFormat String?  @db.Text
+  constraints  String?  @db.Text
+  examples     Json     @default("[]")
+  createdAt    DateTime @default(now())
+  createdBy    String
+
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  createdByUser User @relation(fields: [createdBy], references: [id])
+
+  @@unique([problemId, version])
+  @@map("problem_versions")
+}
+
+// ─────────────────────────────────────────────
+// SUBMISSION & JUDGE
+// ─────────────────────────────────────────────
+
+model Submission {
+  id             String    @id @default(cuid())
+  userId         String
+  problemId      String
+  contestId      String?
+  examAttemptId  String?
+  sourceCode     String    @db.Text
+  language       Language
+  verdict        Verdict   @default(PENDING)
+  score          Int       @default(0)
+  executionTime  Int?      // ms
+  memoryUsed     Int?      // KB
+  compilerOutput String?   @db.Text
+  errorMessage   String?   @db.Text
+  isPublic       Boolean   @default(false)
+  submittedAt    DateTime  @default(now())
+  judgedAt       DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id])
+  contest Contest? @relation(fields: [contestId], references: [id], onDelete: SetNull)
+
+  judgeJob     JudgeJob?
+  judgeResults JudgeResult[]
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([contestId])
+  @@index([verdict])
+  @@index([submittedAt])
+  @@map("submissions")
+}
+
+model JudgeJob {
+  id            String    @id @default(cuid())
+  submissionId  String    @unique
+  status        Verdict   @default(QUEUED)
+  judge0TokenId String?
+  retryCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+  completedAt   DateTime?
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("judge_jobs")
+}
+
+model JudgeResult {
+  id            String   @id @default(cuid())
+  submissionId  String
+  testCaseId    String
+  verdict       Verdict
+  executionTime Int?     // ms
+  memoryUsed    Int?     // KB
+  errorMessage  String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  submission Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  testCase   ProblemTestCase @relation(fields: [testCaseId], references: [id])
+
+  @@map("judge_results")
+}
+
+// ─────────────────────────────────────────────
+// CONTEST
+// ─────────────────────────────────────────────
+
+model Contest {
+  id                   String        @id @default(cuid())
+  slug                 String        @unique
+  title                String
+  description          String?       @db.Text
+  type                 ContestType   @default(PUBLIC)
+  status               ContestStatus @default(DRAFT)
+  scoringType          ScoringType   @default(ICPC)
+  startTime            DateTime
+  endTime              DateTime
+  registrationDeadline DateTime?
+  maxParticipants      Int?
+  isRated              Boolean       @default(true)
+  createdBy            String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  creator      User                 @relation(fields: [createdBy], references: [id])
+  problems     ContestProblem[]
+  participants ContestParticipant[]
+  standings    ContestStanding[]
+  submissions  Submission[]
+
+  @@index([status])
+  @@index([startTime])
+  @@map("contests")
+}
+
+model ContestProblem {
+  id           String   @id @default(cuid())
+  contestId    String
+  problemId    String
+  orderIndex   Int
+  points       Int      @default(100)
+  problemLabel String   // "A", "B", "C", etc.
+  createdAt    DateTime @default(now())
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id])
+
+  @@unique([contestId, problemId])
+  @@unique([contestId, orderIndex])
+  @@map("contest_problems")
+}
+
+model ContestParticipant {
+  id               String    @id @default(cuid())
+  contestId        String
+  userId           String
+  registeredAt     DateTime  @default(now())
+  isVirtual        Boolean   @default(false)
+  virtualStartTime DateTime?
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  @@map("contest_participants")
+}
+
+model ContestStanding {
+  id             String    @id @default(cuid())
+  contestId      String
+  userId         String
+  rank           Int?
+  totalSolved    Int       @default(0)
+  totalPenalty   Int       @default(0)
+  lastAcceptedAt DateTime?
+  scores         Json      @default("{}")
+  updatedAt      DateTime  @updatedAt
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  @@index([contestId, rank])
+  @@map("contest_standings")
+}
+
+// ─────────────────────────────────────────────
+// GROUP
+// ─────────────────────────────────────────────
+
+model Group {
+  id           String      @id @default(cuid())
+  slug         String      @unique
+  name         String
+  description  String?     @db.Text
+  avatarUrl    String?
+  inviteCode   String      @unique @default(cuid())
+  inviteExpiry DateTime?
+  maxMembers   Int?
+  instructorId String?
+  status       GroupStatus @default(ACTIVE)
+  createdBy    String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  creator    User              @relation("GroupCreator", fields: [createdBy], references: [id])
+  instructor User?             @relation("GroupInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  members    GroupMember[]
+  invitations GroupInvitation[]
+  assignments GroupAssignment[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String    @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupInvitation {
+  id         String    @id @default(cuid())
+  groupId    String
+  inviteCode String    @unique
+  maxUses    Int?
+  useCount   Int       @default(0)
+  expiresAt  DateTime?
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User  @relation(fields: [createdBy], references: [id])
+
+  @@map("group_invitations")
+}
+
+model GroupAssignment {
+  id          String    @id @default(cuid())
+  groupId     String
+  problemId   String
+  title       String
+  description String?   @db.Text
+  dueDate     DateTime?
+  points      Int       @default(100)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id])
+  creator User    @relation(fields: [createdBy], references: [id])
+
+  @@map("group_assignments")
+}
+
+// ─────────────────────────────────────────────
+// EDUCATION
+// ─────────────────────────────────────────────
+
+model Course {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  title        String
+  description  String?      @db.Text
+  thumbnailUrl String?
+  instructorId String?
+  status       CourseStatus @default(DRAFT)
+  level        Difficulty
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  instructor User?    @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  lessons    Lesson[]
+  classes    Class[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id         String     @id @default(cuid())
+  courseId   String
+  title      String
+  content    String?    @db.Text
+  orderIndex Int
+  type       LessonType @default(TEXT)
+  duration   Int?       // minutes
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, orderIndex])
+  @@map("lessons")
+}
+
+model Class {
+  id           String    @id @default(cuid())
+  courseId     String?
+  name         String
+  description  String?   @db.Text
+  instructorId String?
+  startDate    DateTime?
+  endDate      DateTime?
+  maxStudents  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  course      Course?      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  instructor  User?        @relation(fields: [instructorId], references: [id], onDelete: SetNull)
+  enrollments Enrollment[]
+  assignments Assignment[]
+
+  @@map("classes")
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  classId     String
+  userId      String
+  enrolledAt  DateTime         @default(now())
+  completedAt DateTime?
+  status      EnrollmentStatus @default(ACTIVE)
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, userId])
+  @@map("enrollments")
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  classId     String?
+  groupId     String?
+  title       String
+  description String?   @db.Text
+  dueDate     DateTime?
+  maxScore    Int       @default(100)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  class       Class?                @relation(fields: [classId], references: [id], onDelete: SetNull)
+  creator     User                  @relation(fields: [createdBy], references: [id])
+  problems    AssignmentProblem[]
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentProblem {
+  assignmentId String
+  problemId    String
+  orderIndex   Int
+  points       Int    @default(100)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  problem    Problem    @relation(fields: [problemId], references: [id])
+
+  @@id([assignmentId, problemId])
+  @@map("assignment_problems")
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  userId       String
+  verdict      Verdict   @default(PENDING)
+  score        Int       @default(0)
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+  gradedBy     String?
+  feedback     String?   @db.Text
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  submitter  User       @relation("AssignmentSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  grader     User?      @relation("AssignmentGrader", fields: [gradedBy], references: [id], onDelete: SetNull)
+
+  @@map("assignment_submissions")
+}
+
+model InstructorFeedback {
+  id         String       @id @default(cuid())
+  userId     String
+  fromUserId String
+  content    String       @db.Text
+  type       FeedbackType @default(GENERAL)
+  createdAt  DateTime     @default(now())
+
+  recipient User @relation("FeedbackReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  sender    User @relation("FeedbackGiver", fields: [fromUserId], references: [id])
+
+  @@map("instructor_feedback")
+}
+
+// ─────────────────────────────────────────────
+// GAMIFICATION
+// ─────────────────────────────────────────────
+
+model EXPTransaction {
+  id          String    @id @default(cuid())
+  userId      String
+  amount      Int
+  source      EXPSource
+  referenceId String?
+  description String
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, referenceId])
+  @@index([userId])
+  @@index([source])
+  @@map("exp_transactions")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  iconUrl     String?
+  category    String
+  points      Int      @default(0)
+  isSecret    Boolean  @default(false)
+  criteria    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+  metadata      Json?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model DailyActivity {
+  id               String   @id @default(cuid())
+  userId           String
+  date             DateTime @db.Date
+  problemsSolved   Int      @default(0)
+  submissionsCount Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_activities")
+}
+
+model UserStreak {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  currentStreak   Int       @default(0)
+  longestStreak   Int       @default(0)
+  lastStreakDate  DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_streaks")
+}
+
+model Mission {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String    @db.Text
+  type        String
+  startDate   DateTime?
+  endDate     DateTime?
+  criteria    Json      @default("{}")
+  reward      Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  userMissions UserMission[]
+
+  @@map("missions")
+}
+
+model UserMission {
+  id          String        @id @default(cuid())
+  userId      String
+  missionId   String
+  progress    Json          @default("{}")
+  status      MissionStatus @default(ACTIVE)
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id])
+
+  @@unique([userId, missionId])
+  @@map("user_missions")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String?
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// SYSTEM
+// ─────────────────────────────────────────────
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+
+  updater User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
+}
