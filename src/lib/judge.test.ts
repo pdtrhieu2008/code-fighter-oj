@@ -1,8 +1,15 @@
 import { Verdict } from "@prisma/client";
 import { describe, expect, it } from "vitest";
-import { mapJudge0Verdict, normalizeOutput, outputsMatch, rewardForDifficulty } from "./judge";
+import { mapJudge0Verdict, normalizeOutput, outputsMatch, rewardForDifficulty, JUDGE0_SANDBOX_OPTIONS } from "./judge";
 
-describe("judge helpers", () => {
+ describe("judge helpers", () => {
+  it("uses isolate per-process limits and keeps network disabled", () => {
+    expect(JUDGE0_SANDBOX_OPTIONS).toEqual({
+      enable_network: false,
+      enable_per_process_and_thread_time_limit: true,
+      enable_per_process_and_thread_memory_limit: true,
+    });
+  });
   it("normalizes CRLF and trailing whitespace without ignoring internal differences", () => {
     expect(outputsMatch("42\r\n\n", "42\n")).toBe(true);
     expect(outputsMatch("4 2\n", "42\n")).toBe(false);

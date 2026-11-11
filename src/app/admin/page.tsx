@@ -92,9 +92,9 @@ export default async function AdminOverviewPage() {
               <Plus className="h-3.5 w-3.5" /> Thêm Bài Tập
             </Button>
           </Link>
-          <Link href="/admin/contests/create">
+          <Link href="/admin/contests">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs border-neutral-700">
-              <Plus className="h-3.5 w-3.5 text-amber-400" /> Tạo Giải Đấu
+              <Plus className="h-3.5 w-3.5 text-amber-400" /> Quản Lý Giải Đấu
             </Button>
           </Link>
         </div>

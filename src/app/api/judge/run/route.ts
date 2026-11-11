@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import axios from "axios";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { JUDGE0_LANGUAGE_IDS, MAX_CUSTOM_INPUT_LENGTH, MAX_SOURCE_LENGTH } from "@/lib/judge";
+import { JUDGE0_LANGUAGE_IDS, JUDGE0_SANDBOX_OPTIONS, MAX_CUSTOM_INPUT_LENGTH, MAX_SOURCE_LENGTH } from "@/lib/judge";
 
 const runSchema = z.object({
   sourceCode: z.string().min(1).max(MAX_SOURCE_LENGTH),
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         source_code: parsed.data.sourceCode,
         language_id: JUDGE0_LANGUAGE_IDS[parsed.data.language],
         stdin: parsed.data.input,
-        enable_network: false,
+        ...JUDGE0_SANDBOX_OPTIONS,
         max_file_size: 2048,
       },
       {

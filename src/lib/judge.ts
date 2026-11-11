@@ -16,6 +16,12 @@ export const PRISMA_LANGUAGES: Record<SupportedJudgeLanguage, Language> = {
   JAVA: Language.JAVA,
 };
 
+export const JUDGE0_SANDBOX_OPTIONS = {
+  enable_network: false,
+  enable_per_process_and_thread_time_limit: true,
+  enable_per_process_and_thread_memory_limit: true,
+} as const;
+
 const JUDGE0_VERDICTS: Record<number, Verdict> = {
   3: Verdict.ACCEPTED,
   4: Verdict.WRONG_ANSWER,

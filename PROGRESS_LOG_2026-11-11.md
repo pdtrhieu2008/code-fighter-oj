@@ -1,7 +1,32 @@
 # CODE FIGHTER OJ — TIẾN ĐỘ TRIỂN KHAI 2026-11-11
 
-**Cập nhật:** 2026-11-11 12:10 (session ZCode)  
-**Giai đoạn hiện tại:** Phase 2 (Online Judge) ~80% + Phase 6 (Contests) đã sửa lỗi + Seed data hoàn chỉnh
+**Cập nhật:** 2026-11-11 12:42 (session ZCode)  
+**Giai đoạn hiện tại:** Phase 2 (Online Judge) ~90% + Phase 6 (Contests) đã sửa lỗi + Phase 7 (Admin management) ~75%
+
+---
+
+## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-11 12:10–12:42, ZCode)
+
+### ✅ Khắc phục chạy code và nộp bài qua Judge0
+- **Nguyên nhân:** Judge0 worker chạy trên WSL2 cgroup v2 nhưng isolate 1.8.1 cố dùng cgroup v1 (`/sys/fs/cgroup/memory`), nên mọi compile trả `Internal Error` và không tạo được `/box/main.cpp`/`script.py`.
+- **Khắc phục:** Cập nhật `/root/judge0/judge0.conf` để bật `enable_per_process_and_thread_time_limit/memory_limit`; restart server/worker để chạy sandbox bằng per-process limits, không phụ thuộc cgroup v1.
+- **Kiểm chứng trực tiếp Judge0:** C++17 (`54`) và Python 3 (`71`) trả **Accepted**, output `42`; network vẫn tắt.
+- **Khắc phục phía app:** Run và Submission API dùng chung `JUDGE0_SANDBOX_OPTIONS`; giữ `max_file_size`, time/memory limits và `expected_output` hidden-test server-side.
+- **Auth:** chưa đăng nhập gọi `/api/judge/run` và `/api/submissions` đều trả **401**, không thực thi/nộp ẩn danh.
+
+### ✅ Tạo trang Admin Contest thực tế
+- Thêm `/admin/contests`: tạo contest, chọn bài public, xem danh sách, tìm kiếm, đổi trạng thái.
+- Thêm `PATCH /api/admin/contests/[id]`: chỉ ADMIN/SUPER_ADMIN, ghi `AuditLog` khi đổi trạng thái.
+- API tạo contest được siết validation: slug, thời gian kết thúc, problem IDs public/active và duplicate IDs.
+- Dashboard quick action trỏ về trang quản lý thật; `/admin/problems` và `/admin/users` đã có sẵn.
+- Build route xác nhận: `/admin/contests`, `/admin/users`, `/admin/problems`, `/api/admin/contests/[id]`.
+
+### ✅ Quality gates
+- `pnpm exec tsc --noEmit`: PASS
+- `pnpm test`: **4 files, 21 tests passed**
+- ESLint các file thay đổi: PASS
+- `pnpm build`: PASS; Next.js cảnh báo middleware convention deprecated nhưng không làm build fail.
+- Git remote đã đổi về URL sạch `https://github.com/pdtrhieu2008/code-fighter-oj.git`; token cũ không còn trong remote config.
 
 ---
 

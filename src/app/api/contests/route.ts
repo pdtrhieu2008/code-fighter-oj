@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireInstructorOrAdmin } from "@/lib/auth-helpers";
-import { ContestType, ContestStatus, ScoringType } from "@prisma/client";
+import { ContestType, ContestStatus, ScoringType, Prisma } from "@prisma/client";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") as ContestStatus | null;
 
-    const where: any = {};
+    const where: Prisma.ContestWhereInput = {};
     if (status && Object.values(ContestStatus).includes(status)) {
       where.status = status;
     }
@@ -56,6 +56,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return NextResponse.json({ error: "Thời gian kết thúc phải sau thời gian bắt đầu." }, { status: 400 });
+    }
+    if (typeof slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+      return NextResponse.json({ error: "Slug chỉ được chứa chữ thường, số và dấu gạch ngang." }, { status: 400 });
+    }
+    if (problemIds !== undefined && (!Array.isArray(problemIds) || problemIds.some((id) => typeof id !== "string"))) {
+      return NextResponse.json({ error: "Danh sách bài tập không hợp lệ." }, { status: 400 });
+    }
 
     const existing = await prisma.contest.findUnique({
       where: { slug: slug.toLowerCase() },
@@ -68,6 +79,15 @@ export async function POST(req: Request) {
     }
 
     const contest = await prisma.$transaction(async (tx) => {
+      const validProblemIds = Array.isArray(problemIds) ? [...new Set(problemIds)] : [];
+      if (validProblemIds.length > 0) {
+        const publicProblemCount = await tx.problem.count({
+          where: { id: { in: validProblemIds }, visibility: "PUBLIC", deletedAt: null },
+        });
+        if (publicProblemCount !== validProblemIds.length) {
+          throw new Error("INVALID_PROBLEM_SELECTION");
+        }
+      }
       const c = await tx.contest.create({
         data: {
           title,
@@ -76,18 +96,18 @@ export async function POST(req: Request) {
           type: type || ContestType.PUBLIC,
           scoringType: scoringType || ScoringType.ICPC,
           status: ContestStatus.REGISTRATION,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
+          startTime: start,
+          endTime: end,
           isRated: !!isRated,
           createdBy: user.id!,
         },
       });
 
       // Attach problems if specified
-      if (Array.isArray(problemIds) && problemIds.length > 0) {
+      if (validProblemIds.length > 0) {
         let order = 0;
         const labels = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
-        for (const pid of problemIds) {
+        for (const pid of validProblemIds) {
           await tx.contestProblem.create({
             data: {
               contestId: c.id,
@@ -115,9 +135,13 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ message: "Tạo giải đấu thành công!", contest }, { status: 201 });
-  } catch (error: any) {
-    if (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN") {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "UNAUTHORIZED" || message === "FORBIDDEN") {
       return NextResponse.json({ error: "Không có quyền thực hiện." }, { status: 403 });
+    }
+    if (message === "INVALID_PROBLEM_SELECTION") {
+      return NextResponse.json({ error: "Chỉ được gắn các bài tập public đang hoạt động." }, { status: 400 });
     }
     console.error("Contest Create Error:", error);
     return NextResponse.json({ error: "Lỗi tạo giải đấu." }, { status: 500 });

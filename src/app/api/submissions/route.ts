@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Visibility, Verdict } from "@prisma/client";
 import axios from "axios";
-import { JUDGE0_LANGUAGE_IDS, MAX_SOURCE_LENGTH, mapJudge0Verdict, outputsMatch, rewardForDifficulty, PRISMA_LANGUAGES } from "@/lib/judge";
+import { JUDGE0_LANGUAGE_IDS, JUDGE0_SANDBOX_OPTIONS, MAX_SOURCE_LENGTH, mapJudge0Verdict, outputsMatch, rewardForDifficulty, PRISMA_LANGUAGES } from "@/lib/judge";
 
 const submissionSchema = z.object({
   problemId: z.string().min(1).max(64),
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
           expected_output: testCase.outputData,
           cpu_time_limit: Math.max(0.1, problem.timeLimit / 1000),
           memory_limit: problem.memoryLimit,
-          enable_network: false,
+          ...JUDGE0_SANDBOX_OPTIONS,
           max_file_size: 2048,
         },
         {
