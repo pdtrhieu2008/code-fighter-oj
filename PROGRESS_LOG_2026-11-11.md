@@ -1,11 +1,59 @@
 # CODE FIGHTER OJ — TIẾN ĐỘ TRIỂN KHAI 2026-11-11
 
-**Cập nhật:** 2026-11-11 12:42 (session ZCode)  
-**Giai đoạn hiện tại:** Phase 2 (Online Judge) ~90% + Phase 6 (Contests) đã sửa lỗi + Phase 7 (Admin management) ~75%
+**Cập nhật:** 2026-11-13 (session ZCode)  
+**Giai đoạn hiện tại:** Phase 2 (Online Judge) ~95% — E2E verified + Phase 6 (Contests) E2E verified + Phase 7 (Admin management) ~75% — E2E verified
 
 ---
 
-## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-11 12:10–12:42, ZCode)
+## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-13, ZCode)
+
+### ✅ E2E TEST ĐẦY ĐỦ LẦN ĐẦU TIÊN — PASS TOÀN BỘ
+
+**Môi trường đã khôi phục sau khi máy nghỉ:**
+- PostgreSQL 18 service RUNNING, DB `code_fighter_oj` OK
+- WSL2 boot lại + snap Docker auto-start, 4 container Judge0 (server/worker/db/redis) Up — IP WSL vẫn `172.17.174.109`, khớp `.env.local`, không cần sửa config
+- Giữ WSL sống bằng keep-alive 4h nền (WSL auto-shutdown khi idle là nguyên nhân Judge0 "chết" giữa các lần test trước)
+- Dev server `http://localhost:3000` chạy OK, `/api/problems` HTTP 200
+- Quality gates: `tsc --noEmit` PASS, `pnpm test` **21/21 PASS** (4 files)
+
+**E2E user flow (script PowerShell, qua Judge0 thật trong WSL):**
+| Bước | Kết quả |
+|---|---|
+| Đăng ký tài khoản mới | 201 — `CF-000006` tự cấp tuần tự |
+| Đăng nhập NextAuth Credentials + JWT session | OK, session trả đúng id/username/role |
+| Submit C++17 đúng (Tổng Hai Số) | **ACCEPTED**, score 60, 28ms, 3204KB |
+| Submit C++17 sai | **WRONG_ANSWER**, score 0 |
+| Run custom input Python3 (`print(n*2)` với input 21) | 200, output `42` |
+| Submit ẩn danh | 401 ✓ |
+| DB verify: EXP idempotency | `totalExp=5, totalSolved=1`, không thưởng trùng |
+
+**E2E Admin Panel flow:**
+| Bước | Kết quả |
+|---|---|
+| Login `admin@codefighter.local` (SUPER_ADMIN) | OK |
+| 6 trang admin (dashboard/contests/users/problems/belts/problems-create) | toàn bộ HTTP 200 |
+| Tạo contest `POST /api/contests` (2 bài public, label A/B, audit log) | 201 |
+| Trang contest detail `/contests/[slug]` | 200 |
+| Đổi status `PATCH /api/admin/contests/[id]` (REGISTRATION → ACTIVE) | 200 |
+| User thường PATCH status | **403** ✓ |
+| User thường tạo contest | **403** ✓ |
+
+### ✅ Commit mới
+- `fix: read role from DB in requireAdmin instead of trusting session` — `requireAdmin` giờ query role trực tiếp từ DB (không tin session token cũ); đã pass tsc + 21 tests trước khi commit; push lên `origin/master`.
+
+### 📌 Đánh giá lại trạng thái (đổi so với log cũ)
+- ❌ cũ "Contest system chưa có" → **đã có và E2E pass** (tạo contest, đăng ký trang detail, scoreboard page đã fix TS ở session trước)
+- ❌ cũ "Admin panel chưa có" → **đã có và E2E pass** (problems CRUD + testcases + users + contests + belts)
+
+### 🔄 Việc còn lại (đã update)
+1. **Academy enrollment UI** — admin tạo class, ghi danh học viên (model + policy sẵn, còn thiếu UI)
+2. **Submission queue & polling** — hiện vẫn sync (chờ Judge0 từng test case); với N hidden test lớn sẽ chậm
+3. **Judge0 hardening WSL** — container sống nhờ keep-alive; lâu dài nên cài `vmIdleTimeout=-1` trong `.wslconfig` hoặc switch sang Docker Desktop
+4. Polish: middleware convention warning, Playwright E2E, Docker deployment
+
+---
+
+## NHẬT KÝ SESSION TRƯỚC (2026-11-11 12:10–12:42, ZCode)
 
 ### ✅ Khắc phục chạy code và nộp bài qua Judge0
 - **Nguyên nhân:** Judge0 worker chạy trên WSL2 cgroup v2 nhưng isolate 1.8.1 cố dùng cgroup v1 (`/sys/fs/cgroup/memory`), nên mọi compile trả `Internal Error` và không tạo được `/box/main.cpp`/`script.py`.
@@ -317,8 +365,10 @@ pnpm exec prisma validate         # pass
 - [x] Pushed to GitHub (master)
 - [x] TypeScript `tsc --noEmit` pass (sau khi fix 6 file contests)
 - [x] Seed data hoàn chỉnh (4 bài toán + test cases + 27 belts + 3 system accounts)
-- [ ] End-to-end signup+login+submit test
-- [ ] Judge0 configured (đang pull image qua Docker/WSL2)
+- [x] End-to-end signup+login+submit test (2026-11-13: AC + WA + run + 401 anon + EXP idempotency)
+- [x] Judge0 configured & E2E verified (WSL2 Docker, judge0.conf per-process limits, `JUDGE0_SANDBOX_OPTIONS`)
+- [x] Admin panel E2E verified (2026-11-13: 6 trang 200 + tạo contest + PATCH status + 403 non-admin)
+- [x] Contest system E2E verified (2026-11-13: POST /api/contests + detail page)
 
 ---
 
