@@ -1,21 +1,25 @@
 import React from "react";
 import { prisma } from "@/lib/prisma";
 import { UserManager } from "./UserManager";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "@prisma/client";
 
 interface Props {
   searchParams: Promise<{
     search?: string;
     role?: string;
+    page?: string;
   }>;
 }
 
 export default async function AdminUsersPage({ searchParams }: Props) {
   const params = await searchParams;
   const search = params.search?.trim() || "";
-  const role = params.role as Role | undefined;
+  const roleParam = params.role;
+  const role = roleParam && Object.values(Role).includes(roleParam as Role) ? roleParam as Role : undefined;
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const pageSize = 50;
 
-  const where: any = {};
+  const where: Prisma.UserWhereInput = {};
   if (search) {
     where.OR = [
       { email: { contains: search, mode: "insensitive" } },
@@ -28,19 +32,24 @@ export default async function AdminUsersPage({ searchParams }: Props) {
     where.role = role;
   }
 
-  const users = await prisma.user.findMany({
-    where,
-    take: 50,
-    orderBy: { createdAt: "desc" },
-    include: {
-      userProfile: true,
-      fighterProfile: true,
-      userBelts: {
-        orderBy: { awardedAt: "desc" },
-        take: 1,
+  const [users, totalUsers] = await prisma.$transaction([
+    prisma.user.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+      include: {
+        userProfile: true,
+        fighterProfile: true,
+        userBelts: {
+          orderBy: { awardedAt: "desc" },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+    prisma.user.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
 
   return (
     <div className="space-y-6">
@@ -53,7 +62,14 @@ export default async function AdminUsersPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <UserManager initialUsers={users} currentSearch={search} currentRole={role || "ALL"} />
+      <UserManager
+        initialUsers={users}
+        currentSearch={search}
+        currentRole={role || "ALL"}
+        currentPage={page}
+        totalPages={totalPages}
+        totalUsers={totalUsers}
+      />
     </div>
   );
 }

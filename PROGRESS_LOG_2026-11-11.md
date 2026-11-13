@@ -5,7 +5,49 @@
 
 ---
 
-## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-13, ZCode)
+## 0. NHẬT KÝ SESSION MỚI NHẤT (2026-11-13, Hermes — Quản lý học viên)
+
+### ✅ Hồ sơ học viên + Chỉnh sửa hồ sơ + Quản lý đai
+
+**Bối cảnh:** người dùng chỉ ra hai thiếu sót: chưa chỉnh sửa được hồ sơ học viên và admin chưa quản lý đai của từng học viên (`/admin/belts` chỉ cấu hình điều kiện 27 bậc).
+
+**Trang mới `/admin/users/[id]`** (server component, `dynamic = force-dynamic`):
+- Header: tên hiển thị, `@username · fighterId`, đai hiện tại (BeltBadge), role, email.
+- Metrics: EXP, rating, số bài đã giải, tỷ lệ AC.
+- `StudentAdminPanel` (client): form sửa hồ sơ + form cấp đai.
+- Lịch sử đai (12 bản ghi gần nhất, kèm ghi chú) + enrollment theo lớp + 15 submission gần nhất.
+- Truy vấn `select` tường minh: **không** lấy `hashedPassword`, token hay source code.
+
+**API mới:**
+| Route | Chức năng |
+|---|---|
+| `PATCH /api/admin/users/[id]` | Sửa hồ sơ: `fullName`, `bio`, `location`, `website`, `githubHandle`, `twitterHandle` (zod, `upsert` UserProfile, audit `STUDENT_PROFILE_UPDATE` kèm previous/next) |
+| `PATCH /api/admin/users/[id]/belt` | Cấp đai: validate enum `BeltColor`/`BeltLevel` + lý do ≥3 ký tự; 1 transaction tạo `UserBelt` + `PromotionHistory` (MANUAL, from/to) + `AuditLog` `STUDENT_BELT_AWARDED` |
+
+**Nguyên tắc giữ nguyên:** cấp đai là **thêm bản ghi mới**, không xóa lịch sử đai cũ; không thay đổi EXP/rating qua các route này.
+
+**Phân quyền (đã siết trong session này):**
+- `requireAdmin` và `requireInstructorOrAdmin` đọc role trực tiếp từ DB thay vì session (tránh JWT còn quyền cũ).
+- `PATCH /api/admin/users`: chặn tự đổi role của chính mình; `ADMIN` không được cấp `SUPER_ADMIN` và không được sửa tài khoản `SUPER_ADMIN`; audit log lưu `previousRole`/`newRole`.
+
+**UI danh sách `/admin/users`:** thêm nút mở hồ sơ (clipboard) song song nút xem hồ sơ công khai; **phân trang server-side** (50/trang, `skip`/`take` + `count` trong `$transaction`), Enter ở ô tìm kiếm và nút lọc role đẩy query lên server (tìm được học viên cũ ngoài trang đầu).
+
+**Quality gates:** `tsc --noEmit` PASS · ESLint các file liên quan PASS · `pnpm test` 21/21 PASS · `pnpm build` PASS (routes `/admin/users/[id]`, `/api/admin/users/[id]`, `/api/admin/users/[id]/belt` xuất hiện trong build).
+
+**Kiểm chứng thật (không tạo dữ liệu rác):**
+| Kiểm tra | Kết quả |
+|---|---|
+| `PATCH /api/admin/users/<id>` khi chưa đăng nhập | **403** `{"error":"Không có quyền thực hiện."}` |
+| `PATCH /api/admin/users/<id>/belt` khi chưa đăng nhập | **403** |
+| `/admin/users/<id>` khi chưa đăng nhập | **307** → `/login?callbackUrl=%2Fadmin%2Fusers%2F...` |
+| Truy vấn hồ sơ mới trên DB thật | OK (đọc được profile + 1 belt BLACK/III, `_count`) |
+| Dry-run transaction cấp đai (create belt + promotion + audit → rollback) | 3 bước OK, rollback sạch: `dry-run belts left: 0`, `promotionHistory: 0` |
+
+**Việc còn lại (cập nhật):** submission queue/polling; Judge0 hardening WSL; examinations (kỳ thi thăng đai); Playwright E2E; middleware convention warning.
+
+---
+
+## 0b. NHẬT KÝ SESSION 2026-11-13 (ZCode)
 
 ### ✅ E2E TEST ĐẦY ĐỦ LẦN ĐẦU TIÊN — PASS TOÀN BỘ
 

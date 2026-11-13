@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { BeltBadge } from "@/components/belt/BeltBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { BeltColor, BeltLevel } from "@prisma/client";
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Shield, UserCheck, Eye } from "lucide-react";
+import { Search, Eye, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
@@ -25,18 +25,21 @@ interface UserItem {
   createdAt: Date | string;
   userProfile?: { fullName: string | null } | null;
   fighterProfile?: { username: string; fighterId: string; rating: number; totalSolved: number } | null;
-  userBelts: { beltColor: any; beltLevel: any }[];
+  userBelts: { beltColor: BeltColor; beltLevel: BeltLevel }[];
 }
 
 interface Props {
   initialUsers: UserItem[];
   currentSearch?: string;
   currentRole?: string;
+  currentPage: number;
+  totalPages: number;
+  totalUsers: number;
 }
 
 const ROLES = ["ALL", "REGISTERED_USER", "STUDENT", "INSTRUCTOR", "ADMIN", "SUPER_ADMIN"];
 
-export function UserManager({ initialUsers, currentSearch = "", currentRole = "ALL" }: Props) {
+export function UserManager({ initialUsers, currentSearch = "", currentRole = "ALL", currentPage, totalPages, totalUsers }: Props) {
   const router = useRouter();
   const [users, setUsers] = useState<UserItem[]>(initialUsers);
   const [search, setSearch] = useState(currentSearch);
@@ -88,7 +91,14 @@ export function UserManager({ initialUsers, currentSearch = "", currentRole = "A
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo email, tên võ sĩ (@username) hoặc Fighter ID..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                router.push(
+                  `/admin/users?search=${encodeURIComponent(search.trim())}&role=${roleFilter}&page=1`
+                );
+              }
+            }}
+            placeholder="Tìm theo email, tên võ sĩ (@username) hoặc Fighter ID... (Enter để tìm toàn bộ)"
             className="pl-9 bg-neutral-900 border-neutral-800"
           />
         </div>
@@ -99,7 +109,12 @@ export function UserManager({ initialUsers, currentSearch = "", currentRole = "A
               key={r}
               variant={roleFilter === r ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setRoleFilter(r)}
+              onClick={() => {
+                setRoleFilter(r);
+                router.push(
+                  `/admin/users?search=${encodeURIComponent(search.trim())}&role=${r}&page=1`
+                );
+              }}
               className="text-xs font-mono"
             >
               {r === "ALL" ? "Tất Cả" : r}
@@ -176,13 +191,20 @@ export function UserManager({ initialUsers, currentSearch = "", currentRole = "A
                       {formatDate(user.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {fp && (
-                        <Link href={`/fighters/${fp.username}`} target="_blank">
+                      <div className="flex justify-end gap-1">
+                        <Link href={`/admin/users/${user.id}`} title="Hồ sơ học viên">
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-white">
-                            <Eye className="h-3.5 w-3.5" />
+                            <ClipboardList className="h-3.5 w-3.5" />
                           </Button>
                         </Link>
-                      )}
+                        {fp && (
+                          <Link href={`/fighters/${fp.username}`} target="_blank" title="Hồ sơ công khai">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-neutral-400 hover:text-white">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -196,6 +218,32 @@ export function UserManager({ initialUsers, currentSearch = "", currentRole = "A
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
+        <span>
+          Tổng {totalUsers} tài khoản · Trang {currentPage}/{totalPages}
+        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/users?search=${encodeURIComponent(currentSearch)}&role=${currentRole}&page=${Math.max(1, currentPage - 1)}`}
+            aria-disabled={currentPage <= 1}
+            className={currentPage <= 1 ? "pointer-events-none opacity-40" : ""}
+          >
+            <Button variant="outline" size="sm" className="gap-1 text-xs" disabled={currentPage <= 1}>
+              <ChevronLeft className="h-3.5 w-3.5" /> Trước
+            </Button>
+          </Link>
+          <Link
+            href={`/admin/users?search=${encodeURIComponent(currentSearch)}&role=${currentRole}&page=${Math.min(totalPages, currentPage + 1)}`}
+            aria-disabled={currentPage >= totalPages}
+            className={currentPage >= totalPages ? "pointer-events-none opacity-40" : ""}
+          >
+            <Button variant="outline" size="sm" className="gap-1 text-xs" disabled={currentPage >= totalPages}>
+              Sau <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -27,7 +27,8 @@ export async function requireAdmin() {
 
 export async function requireInstructorOrAdmin() {
   const user = await requireAuth();
-  const role = (user as any).role as Role;
+  const current = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+  const role = current?.role;
   if (
     !role ||
     (role !== Role.INSTRUCTOR &&
@@ -36,5 +37,5 @@ export async function requireInstructorOrAdmin() {
   ) {
     throw new Error("FORBIDDEN");
   }
-  return user;
+  return { ...user, role };
 }
