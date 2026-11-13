@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
 export async function getCurrentUser() {
@@ -16,11 +17,12 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   const user = await requireAuth();
-  const role = (user as any).role as Role;
+  const current = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true } });
+  const role = current?.role;
   if (!role || (role !== Role.ADMIN && role !== Role.SUPER_ADMIN)) {
     throw new Error("FORBIDDEN");
   }
-  return user;
+  return { ...user, role };
 }
 
 export async function requireInstructorOrAdmin() {
