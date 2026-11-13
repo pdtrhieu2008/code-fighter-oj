@@ -11,7 +11,6 @@ import {
   Award,
   UsersRound,
   Swords,
-  GraduationCap,
   FileText,
   ArrowLeft,
 } from "lucide-react";
@@ -23,9 +22,8 @@ const NAV_ITEMS = [
   { href: "/admin/problems/create", label: "Soạn Bài Tập Mới", icon: PlusCircle },
   { href: "/admin/users", label: "Người Dùng & Võ Sĩ", icon: Users },
   { href: "/admin/belts", label: "Cấu Hình 27 Cấp Đai", icon: Award },
-  { href: "/admin/groups", label: "Học Viện & Lớp Học", icon: UsersRound },
+  { href: "/admin/academy", label: "Học Viện & Lớp Học", icon: UsersRound },
   { href: "/admin/contests", label: "Giải Đấu (Contest)", icon: Swords },
-  { href: "/admin/examinations", label: "Kỳ Thi Thăng Đai", icon: GraduationCap },
   { href: "/admin/audit-logs", label: "Nhật Ký Kiểm Toán", icon: FileText },
 ];
 

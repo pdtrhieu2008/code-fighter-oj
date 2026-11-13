@@ -46,9 +46,46 @@
 - ❌ cũ "Admin panel chưa có" → **đã có và E2E pass** (problems CRUD + testcases + users + contests + belts)
 
 ### 🔄 Việc còn lại (đã update)
-1. **Academy enrollment UI** — admin tạo class, ghi danh học viên (model + policy sẵn, còn thiếu UI)
-2. **Submission queue & polling** — hiện vẫn sync (chờ Judge0 từng test case); với N hidden test lớn sẽ chậm
-3. **Judge0 hardening WSL** — container sống nhờ keep-alive; lâu dài nên cài `vmIdleTimeout=-1` trong `.wslconfig` hoặc switch sang Docker Desktop
+1. **Submission queue & polling** — hiện vẫn sync (chờ Judge0 từng test case); với N hidden test lớn sẽ chậm
+2. **Judge0 hardening WSL** — container sống nhờ keep-alive; lâu dài nên cài `vmIdleTimeout=-1` trong `.wslconfig` hoặc switch sang Docker Desktop
+3. Polish: middleware convention warning, Playwright E2E, Docker deployment
+
+### ✅ HOÀN THÀNH (2026-11-13, tiếp nối session): Academy enrollment UI + Audit Logs
+- Phát hiện sidebar admin có 3 link chết: `/admin/groups`, `/admin/examinations`, `/admin/audit-logs` (trang chưa tồn tại).
+
+**API mới (4 route, tất cả `requireAdmin` đọc role từ DB + AuditLog):**
+- `POST /api/admin/academy/classes` — tạo lớp (zod: tên 3-100 ký tự, courseId/instructorId phải tồn tại, instructor phải là INSTRUCTOR/ADMIN, end > start, maxStudents 1-1000; audit `ACADEMY_CLASS_CREATE`)
+- `DELETE /api/admin/academy/classes/[id]` — xóa lớp (cascade enrollment; audit `ACADEMY_CLASS_DELETE`)
+- `POST /api/admin/academy/classes/[id]/enrollments` — ghi danh theo email HOẶC @username; 409 nếu đã ACTIVE; **tái kích hoạt** nếu COMPLETED/DROPPED; check maxStudents; audit `ACADEMY_ENROLL`/`ACADEMY_ENROLL_REACTIVATE`
+- `PATCH/DELETE /api/admin/academy/classes/[id]/enrollments/[enrollmentId]` — đổi status (ACTIVE/COMPLETED/DROPPED, COMPLETED set completedAt) / xóa bản ghi; audit đầy đủ
+
+**UI mới:**
+- `/admin/academy` — server component + `AcademyManager.tsx` (client): form tạo lớp (khóa học, HLV, lịch, maxStudents), danh sách lớp có search, expand từng lớp → bảng học viên (fullName/@username/fighterId/email/status/select đổi status/xóa), input ghi danh, badge ACTIVE/maxStudents
+- `/admin/audit-logs` — bảng 100 log mới nhất với màu theo loại action, người thực hiện, target, metadata JSON
+- Sidebar: `/admin/groups` → `/admin/academy` (fix link chết); tạm bỏ link `/admin/examinations` (feature kỳ thi thăng đai làm sau); thêm "Nhật Ký Kiểm Toán"
+
+**Quality gates:**
+- `tsc --noEmit` PASS, ESLint các file mới PASS, `pnpm test` 21/21 PASS
+
+**E2E Academy (11/11 checks PASS):**
+| Bước | Kết quả |
+|---|---|
+| Tạo lớp (có HLV, maxStudents) | 201 |
+| Tạo lớp end < start | **400** ✓ |
+| Ghi danh theo email | 201 ACTIVE ✓ |
+| Ghi danh trùng (đang ACTIVE) | **409** ✓ |
+| Ghi danh student không tồn tại | **404** ✓ |
+| Ghi danh theo @username | 201 ✓ |
+| PATCH → COMPLETED (set completedAt) | 200 ✓ |
+| DROP → ghi danh lại (tái kích hoạt) | 200 ACTIVE ✓ |
+| Trang `/admin/academy`, `/admin/audit-logs` | 200 ✓ |
+| Non-admin tạo lớp | **403** ✓ |
+| DELETE enrollment + DELETE class | 200 ✓ |
+
+**Việc còn lại (cập nhật):**
+1. **Submission queue & polling** — hiện vẫn sync; với nhiều hidden test sẽ chậm
+2. **Judge0 hardening WSL** — `vmIdleTimeout=-1` trong `.wslconfig` hoặc Docker Desktop
+3. **Examinations** (kỳ thi thăng đai) — đã bỏ link tạm, làm sau
 4. Polish: middleware convention warning, Playwright E2E, Docker deployment
 
 ---
